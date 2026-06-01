@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Carrito IoT</title>
+    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/721/721663.png" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #121212; color: #e0e0e0; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        .full-screen { height: 100vh; display: flex; flex-direction: column; padding: 15px; }
+        .card { background-color: #1e1e1e; border: 1px solid #333; height: 100%; }
+        .btn-move { width: 70px; height: 70px; font-size: 24px; margin: 5px; }
+        .obstaculo-alerta { animation: parpadeo 1s infinite; }
+        @keyframes parpadeo { 0% { background-color: #550000; } 50% { background-color: #ff0000; color: white; } 100% { background-color: #550000; } }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid full-screen">
+        <div class="row mb-2">
+            <div class="col-12 text-center">
+                <h2 class="text-info"><i class="bi bi-cpu"></i> PANEL DE CONTROL - CARRITO IoT</h2>
+            </div>
+        </div>
+
+        <div class="row flex-grow-1 g-3">
+            <div class="col-md-5">
+                <div class="card p-3 text-center d-flex flex-column justify-content-center">
+                    <h5 class="text-primary mb-3"><i class="bi bi-compass"></i> Dirección (11 Movimientos)</h5>
+                    
+                    <div class="d-flex justify-content-center">
+                        <button class="btn btn-outline-info btn-move" onclick="enviarMovimiento(5)" title="Vuelta Izquierda Adelante"><i class="bi bi-arrow-up-left-circle"></i></button>
+                        <button class="btn btn-success btn-move" onclick="enviarMovimiento(1)" title="Adelante"><i class="bi bi-arrow-up"></i></button>
+                        <button class="btn btn-outline-info btn-move" onclick="enviarMovimiento(4)" title="Vuelta Derecha Adelante"><i class="bi bi-arrow-up-right-circle"></i></button>
+                    </div>
+
+                    <div class="d-flex justify-content-center">
+                        <button class="btn btn-warning btn-move" onclick="enviarMovimiento(9)" title="Giro 90° Izquierda"><i class="bi bi-arrow-counterclockwise"></i><br><small style="font-size: 10px;">90°</small></button>
+                        <button class="btn btn-danger btn-move" onclick="enviarMovimiento(3)" title="Parar"><i class="bi bi-x-circle"></i></button>
+                        <button class="btn btn-warning btn-move" onclick="enviarMovimiento(8)" title="Giro 90° Derecha"><i class="bi bi-arrow-clockwise"></i><br><small style="font-size: 10px;">90°</small></button>
+                    </div>
+
+                    <div class="d-flex justify-content-center">
+                        <button class="btn btn-outline-info btn-move" onclick="enviarMovimiento(7)" title="Vuelta Izquierda Atrás"><i class="bi bi-arrow-down-left-circle"></i></button>
+                        <button class="btn btn-success btn-move" onclick="enviarMovimiento(2)" title="Atrás"><i class="bi bi-arrow-down"></i></button>
+                        <button class="btn btn-outline-info btn-move" onclick="enviarMovimiento(6)" title="Vuelta Derecha Atrás"><i class="bi bi-arrow-down-right-circle"></i></button>
+                    </div>
+
+                    <div class="d-flex justify-content-center mt-3">
+                        <button class="btn btn-outline-warning me-2" onclick="enviarMovimiento(11)"><i class="bi bi-arrow-repeat"></i> Giro 360° Izq</button>
+                        <button class="btn btn-outline-warning" onclick="enviarMovimiento(10)"><i class="bi bi-arrow-repeat"></i> Giro 360° Der</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="d-flex flex-column h-100 gap-3">
+                    <div class="card p-3 text-center">
+                        <h5 class="text-warning"><i class="bi bi-speedometer2"></i> Niveles de Velocidad</h5>
+                        <input type="range" class="form-range mt-3" min="0" max="255" step="51" id="speedRange" value="255" onchange="cambiarVelocidad(this.value)">
+                        <p class="mt-2">PWM Actual: <span id="speedVal" class="text-warning fw-bold">255</span></p>
+                    </div>
+                    
+                    <div class="card p-3 text-center flex-grow-1">
+                        <h5 class="text-success"><i class="bi bi-play-circle"></i> Secuencias (Modo DEMO)</h5>
+                        <div class="d-flex justify-content-around my-3">
+                            <button id="btnGrab" class="btn btn-outline-danger" onclick="toggleGrabacion()"><i class="bi bi-record-circle"></i> Grabar</button>
+                            <button class="btn btn-outline-success" onclick="ejecutarSecuencia()"><i class="bi bi-play-fill"></i> Ejecutar</button>
+                            <button class="btn btn-outline-info" onclick="repetirSecuencia()"><i class="bi bi-repeat"></i> Repetir</button>
+                            <button class="btn btn-danger" onclick="pararDemo()"><i class="bi bi-stop-fill"></i> Parar Demo</button>
+
+                        </div>
+                        <div class="text-start bg-dark p-2 rounded flex-grow-1" style="overflow-y: auto; max-height: 120px;">
+                            <small class="text-muted">Pasos guardados:</small>
+                            <div id="demoSteps" class="small text-success"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div id="statusCard" class="card p-3 text-center d-flex flex-column justify-content-between">
+                    <div>
+                        <h5 class="text-info"><i class="bi bi-broadcast"></i> Estatus Realtime</h5>
+                        <hr class="border-secondary">
+                        <p class="mb-1">Último ID Movimiento:</p>
+                        <h1 id="lblMov" class="display-4 fw-bold text-light">-</h1>
+                    </div>
+                    
+                    <div id="obstaculoAlert" class="p-3 rounded bg-success text-white fw-bold">
+                        <i class="bi bi-check-circle-fill"></i> CAMINO LIBRE
+                    </div>
+                    
+                    <div>
+                        <small class="text-muted">Actualizado:</small>
+                        <div id="lblTime" class="small text-info">-</div>
+                    </div>
+                </div>
+            </div>
+
+        
+
+
+        </div>
+    </div>
+
+    <script>
+        // 1. Configuración de rutas limpias apuntando a tu IP actual (.82)
+        const API_URL = "http://192.168.1.100:5000/full/movimiento";
+        const PARAM_URL = "http://192.168.1.100:5000/full/parametro";
+        const WS_URL = "ws://192.168.1.100:5000/ws/carrito";
+        
+        let grabando = false;
+        let secuencia = [];
+        let repitiendo = false;
+
+        // 2. Enviar Movimiento al Backend (CORREGIDO SIN DUPLICAR RUTAS)
+       // 2. Enviar Movimiento al Backend (MODIFICADO PARA MODO GRABACIÓN)
+        function enviarMovimiento(idMov) {
+            if (grabando) {
+                secuencia.push(idMov);
+                actualizarListaDemo();
+                console.log("Paso guardado en secuencia:", idMov);
+                return; // <-- CRITICAL: Detiene la función aquí para que NO se envíe a Flask
+            }
+
+            // Si NO está grabando, el flujo continúa normal y mueve el carrito físico
+            fetch(API_URL, { 
+                method: 'POST',
+                mode: 'cors',
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    "id_movimiento": parseInt(idMov), 
+                    "id_dispositivo": 1, 
+                    "origen": "WEB" 
+                })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Error en respuesta de servidor');
+                return res.json();
+            })
+            .then(data => console.log("Éxito desde botón:", data))
+            .catch(err => console.error("Error al enviar movimiento:", err));
+        }
+
+        // 3. Manejo de Niveles de Velocidad (CORREGIDO APUNTANDO A PARAM_URL)
+        function cambiarVelocidad(valor) {
+            document.getElementById("speedVal").innerText = valor;
+            fetch(PARAM_URL, { // <-- Usamos la variable correcta directa
+                method: 'PUT',
+                mode: 'cors',
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    "clave": "VELOCIDAD", 
+                    "valor": valor 
+                })
+            })
+            .then(res => res.json())
+            .then(data => console.log("Velocidad actualizada:", data))
+            .catch(err => console.error("Error al actualizar velocidad:", err));
+        }
+
+        // 4. Control de Grabación del Modo DEMO
+        // 4. Control de Grabación del Modo DEMO
+        function toggleGrabacion() {
+            grabando = !grabando;
+            const btn = document.getElementById("btnGrab");
+            if (grabando) {
+                // Forzamos un freno físico rápido antes de bloquear el envío
+                fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "id_movimiento": 3, "id_dispositivo": 1, "origen": "WEB" })
+                }).catch(err => console.error("Error al frenar:", err));
+
+                secuencia = [];
+                btn.className = "btn btn-danger";
+                btn.innerHTML = '<i class="bi bi-stop-circle"></i> Parar';
+            } else {
+                btn.className = "btn btn-outline-danger";
+                btn.innerHTML = '<i class="bi bi-record-circle"></i> Grabar';
+            }
+        }
+
+        function actualizarListaDemo() {
+            document.getElementById("demoSteps").innerText = secuencia.join(" ➔ ");
+        }
+
+        async function ejecutarSecuencia() {
+            // Activamos una bandera temporal para saber que está corriendo una secuencia
+            repitiendo = true; 
+            
+            for (let idMov of secuencia) {
+                // Si en medio del delay presionas "Parar Demo", este IF rompe el bucle de inmediato
+                if (!repitiendo) {
+                    console.log("Secuencia cancelada por el usuario.");
+                    break;
+                }
+                enviarMovimiento(idMov);
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
+
+        async function repetirSecuencia() {
+            repitiendo = true;
+            while(repitiendo && secuencia.length > 0) {
+                await ejecutarSecuencia();
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+
+        // 5. Escucha del WebSocket en Tiempo Real
+        const ws = new WebSocket(WS_URL);
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            document.getElementById("lblMov").innerText = data.id_movimiento || "-";
+            document.getElementById("lblTime").innerText = data.fecha_hora || data.fecha_actualizacion || "-";
+            
+            const alertBox = document.getElementById("obstaculoAlert");
+            if (data.id_movimiento == 3) { 
+                alertBox.className = "p-3 rounded obstaculo-alerta text-white fw-bold";
+                alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> ¡OBSTÁCULO DETECTADO!';
+            } else {
+                alertBox.className = "p-3 rounded bg-success text-white fw-bold";
+                alertBox.innerHTML = '<i class="bi bi-check-circle-fill"></i> CAMINO LIBRE';
+            }
+        };
+
+        // Nueva función para detener la secuencia DEMO en seco
+        function pararDemo() {
+            // 1. Apagamos las banderas para romper los bucles 'for' y 'while'
+            repitiendo = false;
+            grabando = false;
+            
+            // 2. Restauramos el botón de grabación por si estaba activo
+            const btn = document.getElementById("btnGrab");
+            btn.className = "btn btn-outline-danger";
+            btn.innerHTML = '<i class="bi bi-record-circle"></i> Grabar';
+
+            // 3. Mandamos un disparo inmediato de PARAR (ID 3) directo a Flask para frenar motores
+            fetch(API_URL, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    "id_movimiento": 3, 
+                    "id_dispositivo": 1, 
+                    "origen": "WEB" 
+                })
+            })
+            .then(res => res.json())
+            .then(data => console.log("¡DEMO DETENIDA Y EN SECO!:", data))
+            .catch(err => console.error("Error al frenar la demo:", err));
+        }
+
+
+
+
+    </script>
+</body>
+</html>

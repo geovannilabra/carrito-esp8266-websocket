@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Carrito IoT</title>
+    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/3222/3222672.png" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        .full-screen { height: 100vh; display: flex; flex-direction: column; padding: 20px; }
+        .card { background-color: #161b22; border: 1px solid #30363d; height: 100%; }
+        .obstaculo-alerta { animation: parpadeo 1s infinite; }
+        @keyframes parpadeo { 0% { background-color: #7a0000; } 50% { background-color: #ff3333; color: white; } 100% { background-color: #7a0000; } }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid full-screen">
+        <div class="row mb-3">
+            <div class="col-12 text-center">
+                <h2 class="text-warning"><i class="bi bi-display"></i> MONITOR DE TELEMETRÍA REALTIME</h2>
+            </div>
+        </div>
+
+        <div class="row flex-grow-1 g-3">
+            <div class="col-md-4">
+                <div class="card p-4 text-center d-flex flex-column justify-content-around">
+                    <div>
+                        <h5 class="text-warning"><i class="bi bi-activity"></i> Estado Actual</h5>
+                        <hr class="border-secondary">
+                        <small class="text-muted">ID Movimiento en ejecución:</small>
+                        <h1 id="monMov" class="display-2 fw-bold text-warning">-</h1>
+                    </div>
+
+                    <div id="monObstaculo" class="p-3 rounded bg-success text-white fw-bold fs-5">
+                        <i class="bi bi-shield-check"></i> DISTANCIA SEGURA
+                    </div>
+
+                    <div>
+                        <small class="text-muted">Última trama:</small>
+                        <div id="monTime" class="font-monospace text-muted small">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card p-4 d-flex flex-column">
+                    <h5 class="text-info mb-3"><i class="bi bi-list-stars"></i> Historial - Últimos 5 Registros</h5>
+                    <div class="table-responsive flex-grow-1" style="overflow-y: auto;">
+                        <table class="table table-dark table-striped align-middle text-center">
+                            <thead>
+                                <tr>
+                                    <th>Fecha / Hora</th>
+                                    <th>MIA</th>
+                                    <th>MIB</th>
+                                    <th>MDA</th>
+                                    <th>MDB</th>
+                                    <th>Tiempo (ms)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaHistorial">
+                                <tr>
+                                    <td colspan="6" class="text-muted">Esperando datos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+         // Cambia la línea por tu IP actual:
+        const WS_URL = "ws://192.168.1.100:5000/ws/carrito";       let historial = [];
+
+        const ws = new WebSocket(WS_URL);
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            document.getElementById("monMov").innerText = data.id_movimiento || "-";
+            document.getElementById("monTime").innerText = data.fecha_hora || new Date().toLocaleTimeString();
+            
+            const obsBox = document.getElementById("monObstaculo");
+            if (data.id_movimiento == 3) {
+                obsBox.className = "p-3 rounded obstaculo-alerta text-white fw-bold fs-5";
+                obsBox.innerHTML = '<i class="bi bi-exclamation-octagon-fill"></i> OBSTÁCULO DETECTADO';
+            } else {
+                obsBox.className = "p-3 rounded bg-success text-white fw-bold fs-5";
+                obsBox.innerHTML = '<i class="bi bi-shield-check"></i> DISTANCIA SEGURA';
+            }
+
+            agregarAlHistorial(data);
+        };
+
+        function agregarAlHistorial(registro) {
+            historial.unshift(registro);
+            if (historial.length > 5) {
+                historial.pop();
+            }
+
+            const tbody = document.getElementById("tablaHistorial");
+            tbody.innerHTML = "";
+
+            historial.forEach(reg => {
+                const fila = document.createElement("tr");
+                fila.innerHTML = `
+                    <td class="text-info font-monospace small">${reg.fecha_hora || reg.fecha_actualizacion || '-'}</td>
+                    <td><span class="badge bg-secondary">${reg.MIA}</span></td>
+                    <td><span class="badge bg-secondary">${reg.MIB}</span></td>
+                    <td><span class="badge bg-secondary">${reg.MDA}</span></td>
+                    <td><span class="badge bg-secondary">${reg.MDB}</span></td>
+                    <td class="text-warning fw-bold">${reg.MITime || '2000'}</td>
+                `;
+                tbody.appendChild(fila);
+            });
+        }
+    </script>
+</body>
+</html>
